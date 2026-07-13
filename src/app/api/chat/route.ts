@@ -3,9 +3,27 @@ import { getProvider } from "@/core/llm"
 import { SYSTEM_PROMPT } from "@/core/prompts/system"
 import { retrieveRelevantContext } from "@/lib/rag"
 import { scanPromptInjection } from "@/lib/safety"
+import { rateLimit } from "@/lib/rate-limit"
 
 export async function POST(req: Request) {
   try {
+    // Resolve client IP and enforce rate limit
+    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "127.0.0.1"
+    const limiter = rateLimit(ip, 15, 60000)
+
+    if (!limiter.success) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded: Too many requests. Please retry in a minute." }),
+        {
+          status: 429,
+          headers: { 
+            "Content-Type": "application/json",
+            "Retry-After": Math.ceil((limiter.reset - Date.now()) / 1000).toString(),
+          },
+        }
+      )
+    }
+
     const { messages, model, provider: providerId } = await req.json()
 
     if (!messages || !Array.isArray(messages)) {
