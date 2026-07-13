@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { getConversation, addMessage } from "@/db/queries/conversations"
+import { maskSensitiveData } from "@/lib/safety"
 
 export async function POST(
   req: Request,
@@ -35,10 +36,12 @@ export async function POST(
       })
     }
 
+    const sanitizedContent = role === "assistant" ? maskSensitiveData(content) : content
+
     const newMessage = await addMessage({
       conversationId: id,
       role,
-      content,
+      content: sanitizedContent,
       tokens,
       cost,
       latency,

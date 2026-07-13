@@ -1,7 +1,8 @@
-import { streamText } from "ai"
+import { streamText, generateText } from "ai"
 import { getProvider } from "@/core/llm"
 import { SYSTEM_PROMPT } from "@/core/prompts/system"
 import { retrieveRelevantContext } from "@/lib/rag"
+import { scanPromptInjection } from "@/lib/safety"
 
 export async function POST(req: Request) {
   try {
@@ -21,10 +22,22 @@ export async function POST(req: Request) {
     const llmProvider = getProvider(providerId)
     const languageModel = llmProvider.getModel(model)
 
-    // 1. RAG Context Retrieval
+    // 1. Safety Scan: Input Prompt Injection Check
     const lastMessage = messages[messages.length - 1]
     const queryText = typeof lastMessage?.content === "string" ? lastMessage.content : ""
-    
+
+    if (queryText.trim() && scanPromptInjection(queryText)) {
+      console.warn("Safety Alert: Prompt injection pattern detected in user prompt.")
+      return new Response(
+        JSON.stringify({ error: "Safety Alert: Suspicious prompt pattern detected. Query rejected." }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    }
+
+    // 2. RAG Context Retrieval
     let sources: Array<{ content: string; documentName: string; score: number }> = []
     let contextText = ""
 
@@ -35,20 +48,57 @@ export async function POST(req: Request) {
         .join("\n\n")
     }
 
-    // 2. System Prompt context injection
+    // 3. Memory: Rolling Summary Consolidation
+    let chatMessages = messages
+    if (messages.length > 8) {
+      console.log("Memory consolidation triggered: Summarizing older context...")
+      
+      const systemMessage = messages.find(m => m.role === "system") || { role: "system", content: SYSTEM_PROMPT }
+      const lastMessages = messages.slice(-4) // Keep the last 4 messages (2 user, 2 assistant turns) for exact state
+      const olderMessages = messages.slice(messages[0].role === "system" ? 1 : 0, -4)
+      
+      const olderMessagesText = olderMessages
+        .map(m => `${m.role.toUpperCase()}: ${m.content}`)
+        .join("\n\n")
+        
+      try {
+        const { text: summary } = await generateText({
+          model: languageModel,
+          prompt: `Summarize the following conversation history in under 150 words. Focus on core technical requirements, decisions made, code files discussed, and open requests:\n\n${olderMessagesText}`,
+        })
+        
+        chatMessages = [
+          systemMessage,
+          {
+            role: "system",
+            content: `Summary of previous conversation context:\n${summary}`
+          },
+          ...lastMessages
+        ]
+      } catch (err) {
+        console.warn("Failed to generate rolling summary, falling back to sliding window compression:", err)
+        // Fallback: compress history to the last 6 messages + system prompt
+        chatMessages = [
+          systemMessage,
+          ...messages.slice(-6)
+        ]
+      }
+    }
+
+    // 4. System Prompt context injection
     let systemPrompt = SYSTEM_PROMPT
     if (contextText) {
       systemPrompt += `\n\nRetrieved Knowledge Base Context:\n${contextText}\n\nStrictly answer the query using the retrieved context above. Cite your sources inline using [Source: Document Name] notation (e.g. "[Source: my-doc.pdf]").`
     }
 
-    // 3. Invoke Vercel AI SDK text streaming
+    // 5. Invoke Vercel AI SDK text streaming
     const result = await streamText({
       model: languageModel,
-      messages,
+      messages: chatMessages,
       system: systemPrompt,
     })
 
-    // 4. Return text stream with sources metadata in header
+    // 6. Return text stream with sources metadata in header
     return new Response(result.textStream, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
