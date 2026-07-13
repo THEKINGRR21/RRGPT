@@ -4,12 +4,11 @@ import { useState, useRef, useEffect } from "react"
 import { Cpu, ChevronDown, Zap, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-export type ModelId = "gemini-flash" | "gemini-pro" | "gpt-4o-mini" | "ollama-local"
-
 export interface ModelOption {
-  id: ModelId
+  id: string
   name: string
-  provider: "Google" | "OpenAI" | "Ollama"
+  provider: "google" | "openai" | "ollama"
+  providerLabel: string
   latency: string
   inputCost: string // Per 1M tokens
   outputCost: string // Per 1M tokens
@@ -20,9 +19,10 @@ export interface ModelOption {
 
 export const MODELS: ModelOption[] = [
   {
-    id: "gemini-flash",
+    id: "gemini-1.5-flash",
     name: "Gemini 1.5 Flash",
-    provider: "Google",
+    provider: "google",
+    providerLabel: "Google",
     latency: "~150ms",
     inputCost: "$0.075",
     outputCost: "$0.30",
@@ -31,9 +31,10 @@ export const MODELS: ModelOption[] = [
     badge: "Speed Optimized",
   },
   {
-    id: "gemini-pro",
+    id: "gemini-1.5-pro",
     name: "Gemini 1.5 Pro",
-    provider: "Google",
+    provider: "google",
+    providerLabel: "Google",
     latency: "~400ms",
     inputCost: "$1.25",
     outputCost: "$5.00",
@@ -44,7 +45,8 @@ export const MODELS: ModelOption[] = [
   {
     id: "gpt-4o-mini",
     name: "GPT-4o Mini",
-    provider: "OpenAI",
+    provider: "openai",
+    providerLabel: "OpenAI",
     latency: "~200ms",
     inputCost: "$0.15",
     outputCost: "$0.60",
@@ -52,9 +54,10 @@ export const MODELS: ModelOption[] = [
     description: "Highly capable and cost-effective model for daily tasks.",
   },
   {
-    id: "ollama-local",
+    id: "llama3",
     name: "Llama 3 (Ollama)",
-    provider: "Ollama",
+    provider: "ollama",
+    providerLabel: "Ollama",
     latency: "~50ms",
     inputCost: "$0.00",
     outputCost: "$0.00",
@@ -65,8 +68,8 @@ export const MODELS: ModelOption[] = [
 ]
 
 interface ModelPickerProps {
-  selectedModel: ModelId
-  onChange: (id: ModelId) => void
+  selectedModel: string
+  onChange: (modelId: string, providerId: string) => void
 }
 
 export function ModelPicker({ selectedModel, onChange }: ModelPickerProps) {
@@ -90,7 +93,7 @@ export function ModelPicker({ selectedModel, onChange }: ModelPickerProps) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card text-sm font-medium transition-all duration-150 hover:bg-secondary focus:outline-none focus:ring-1 focus:ring-accent",
+          "flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card text-sm font-medium transition-all duration-150 hover:bg-secondary focus:outline-none focus:ring-1 focus:ring-accent select-none",
           isOpen && "bg-secondary"
         )}
         aria-haspopup="listbox"
@@ -98,15 +101,15 @@ export function ModelPicker({ selectedModel, onChange }: ModelPickerProps) {
       >
         <Cpu className="w-4 h-4 text-accent" />
         <span className="font-semibold">{currentModel.name}</span>
-        <span className="text-xs text-muted-foreground font-mono px-1 bg-secondary rounded border border-border">
+        <span className="text-xs text-muted-foreground font-mono px-1.5 py-0.5 bg-secondary rounded border border-border capitalize">
           {currentModel.provider}
         </span>
         <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform duration-150", isOpen && "rotate-180")} />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1.5 w-80 rounded-lg border border-border bg-card shadow-lg z-50 overflow-hidden divide-y divide-border">
-          <div className="px-3 py-2 bg-secondary/50">
+        <div className="absolute right-0 mt-1.5 w-80 rounded-lg border border-border bg-card shadow-lg z-50 overflow-hidden divide-y divide-border animate-fade-in">
+          <div className="px-3 py-2 bg-secondary/50 select-none">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Select Model Provider</span>
           </div>
           <div className="py-1 max-h-[350px] overflow-y-auto" role="listbox">
@@ -118,7 +121,7 @@ export function ModelPicker({ selectedModel, onChange }: ModelPickerProps) {
                   role="option"
                   aria-selected={isSelected}
                   onClick={() => {
-                    onChange(model.id)
+                    onChange(model.id, model.provider)
                     setIsOpen(false)
                   }}
                   className={cn(
@@ -134,7 +137,7 @@ export function ModelPicker({ selectedModel, onChange }: ModelPickerProps) {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                     {model.description}
                   </p>
                   

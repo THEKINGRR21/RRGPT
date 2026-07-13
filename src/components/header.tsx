@@ -1,13 +1,13 @@
 "use client"
 
 import { PanelLeftOpen, Shield } from "lucide-react"
-import { ModelPicker, ModelId } from "@/components/model-picker"
+import { ModelPicker } from "@/components/model-picker"
 
 interface HeaderProps {
   isSidebarOpen: boolean
   setIsSidebarOpen: (open: boolean) => void
-  selectedModel: ModelId
-  onModelChange: (id: ModelId) => void
+  selectedModel: string
+  onModelChange: (modelId: string, providerId: string) => void
   activeTitle: string
 }
 

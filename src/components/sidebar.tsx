@@ -15,13 +15,14 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useSession, signIn, signOut } from "next-auth/react"
 
 export interface Conversation {
   id: string
   title: string
   isPinned: boolean
   model: string
-  updatedAt: string
+  updatedAt: string | Date
 }
 
 interface SidebarProps {
@@ -47,6 +48,12 @@ export function Sidebar({
   onTogglePin,
   onRename,
 }: SidebarProps) {
+  const { data: session } = useSession()
+  const user = session?.user
+  const initials = user?.name 
+    ? user.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() 
+    : "U"
+
   const [searchQuery, setSearchQuery] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState("")
@@ -174,15 +181,33 @@ export function Sidebar({
 
         {/* User / Theme section */}
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <div className="w-8 h-8 rounded-full bg-accent/15 border border-accent/20 flex items-center justify-center font-bold text-accent text-xs">
-              DL
+          {user ? (
+            <div className="flex items-center gap-2 overflow-hidden flex-1 group/user relative items-center">
+              <div className="w-8 h-8 rounded-full bg-accent/15 border border-accent/20 flex items-center justify-center font-bold text-accent text-xs shrink-0 select-none">
+                {initials}
+              </div>
+              <div className="flex flex-col text-left overflow-hidden flex-1">
+                <span className="font-semibold text-xs text-foreground truncate">{user.name || "User"}</span>
+                <span className="text-[9px] text-muted-foreground truncate">{user.email || ""}</span>
+              </div>
+              <button
+                onClick={() => signOut()}
+                className="opacity-0 group-hover/user:opacity-100 px-2 py-1 text-[9px] font-mono text-muted-foreground hover:text-rose-500 rounded bg-secondary hover:bg-secondary/80 absolute right-0 transition-opacity"
+                title="Sign out"
+              >
+                Logout
+              </button>
             </div>
-            <div className="flex flex-col text-left overflow-hidden">
-              <span className="font-semibold text-xs text-foreground truncate">Dev Local</span>
-              <span className="text-[9px] text-muted-foreground truncate">dev@rrgpt.internal</span>
+          ) : (
+            <div className="flex items-center gap-2 flex-1">
+              <button
+                onClick={() => signIn()}
+                className="flex-1 text-center py-1.5 px-3 rounded bg-secondary hover:bg-secondary/80 text-xs text-foreground font-semibold border border-border"
+              >
+                Sign In
+              </button>
             </div>
-          </div>
+          )}
           <ThemeToggle />
         </div>
       </div>
