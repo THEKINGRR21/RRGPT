@@ -153,8 +153,10 @@ export function ChatArea({
                   </div>
                   
                   <div className={cn(
-                    "w-full text-base leading-relaxed whitespace-pre-wrap selection:bg-accent/20",
-                    m.role === "user" ? "text-foreground font-medium bg-secondary/30 p-4 rounded-xl border border-border/30 max-w-[90%]" : "text-foreground"
+                    "w-full whitespace-pre-wrap selection:bg-accent/25 tracking-wide",
+                    m.role === "user" 
+                      ? "text-sm font-semibold bg-secondary/50 p-4 rounded-2xl border border-border/40 max-w-[85%] text-foreground/90 font-sans" 
+                      : "text-base font-serif leading-relaxed text-foreground/90 py-2"
                   )}>
                     {m.content}
                   </div>

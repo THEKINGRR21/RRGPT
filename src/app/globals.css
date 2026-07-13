@@ -1,48 +1,48 @@
 @import "tailwindcss";
 
 :root {
-  --background: 210 20% 98%;
-  --foreground: 224 15% 12%;
+  --background: 48 20% 97%;
+  --foreground: 40 15% 15%;
   --card: 0 0% 100%;
-  --card-foreground: 224 15% 12%;
+  --card-foreground: 40 15% 15%;
   --popover: 0 0% 100%;
-  --popover-foreground: 224 15% 12%;
-  --primary: 217 91% 60%;
+  --popover-foreground: 40 15% 15%;
+  --primary: 15 52% 58%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 220 14% 96%;
-  --secondary-foreground: 220 15% 15%;
-  --muted: 220 10% 40%;
-  --muted-foreground: 220 10% 40%;
-  --accent: 217 91% 60%;
+  --secondary: 45 10% 93%;
+  --secondary-foreground: 40 15% 15%;
+  --muted: 40 8% 45%;
+  --muted-foreground: 40 8% 45%;
+  --accent: 15 52% 58%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 100%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 217 91% 60%;
-  --radius: 0.5rem;
+  --border: 45 12% 90%;
+  --input: 45 12% 90%;
+  --ring: 15 52% 58%;
+  --radius: 0.75rem; /* Re-curved for Apple style */
 }
 
 .dark {
-  --background: 224 15% 8%;
-  --foreground: 210 20% 98%;
-  --card: 224 15% 12%;
-  --card-foreground: 210 20% 98%;
-  --popover: 224 15% 12%;
-  --popover-foreground: 210 20% 98%;
-  --primary: 217 91% 60%;
+  --background: 40 10% 9%;
+  --foreground: 48 20% 95%;
+  --card: 45 6% 13%;
+  --card-foreground: 48 20% 95%;
+  --popover: 45 6% 13%;
+  --popover-foreground: 48 20% 95%;
+  --primary: 15 52% 58%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 217 19% 19%;
-  --secondary-foreground: 210 20% 98%;
-  --muted: 215 15% 65%;
-  --muted-foreground: 215 15% 65%;
-  --accent: 217 91% 60%;
+  --secondary: 40 6% 15%;
+  --secondary-foreground: 48 20% 95%;
+  --muted: 40 8% 68%;
+  --muted-foreground: 40 8% 68%;
+  --accent: 15 52% 58%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 20% 98%;
-  --border: 217 19% 19%;
-  --input: 217 19% 19%;
-  --ring: 217 91% 60%;
+  --destructive-foreground: 48 20% 95%;
+  --border: 40 6% 17%;
+  --input: 40 6% 17%;
+  --ring: 15 52% 58%;
 }
 
 @theme {
@@ -70,21 +70,22 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
   
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-serif), Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Custom Scrollbar for Sleek/Calm Vibe */
+/* Custom Scrollbar for tactile/calm vibe */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -93,9 +94,9 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background: hsl(var(--muted-foreground) / 0.4);
 }

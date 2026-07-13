@@ -19,7 +19,7 @@ export function Header({
   activeTitle,
 }: HeaderProps) {
   return (
-    <header className="h-14 border-b border-border bg-card px-4 flex items-center justify-between shrink-0">
+    <header className="h-14 border-b border-border/50 bg-background/80 backdrop-blur-md sticky top-0 z-40 px-4 flex items-center justify-between shrink-0">
       <div className="flex items-center gap-3">
         {!isSidebarOpen && (
           <button
