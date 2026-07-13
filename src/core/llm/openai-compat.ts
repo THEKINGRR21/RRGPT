@@ -63,8 +63,10 @@ export class OpenAICompatProvider implements LLMProvider {
   }
 
   async embedText(text: string): Promise<number[]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const embedder = this.client.textEmbeddingModel as any
     const { embedding } = await embed({
-      model: this.client.textEmbeddingModel("text-embedding-3-small"),
+      model: embedder("text-embedding-3-small", { dimensions: 768 }),
       value: text,
     })
     return embedding

@@ -249,6 +249,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         throw new Error(errJson.error || "Failed to communicate with LLM gateway")
       }
 
+      // Parse citations sources header
+      const sourcesHeader = resStream.headers.get("X-Sources")
+      let sourcesList = []
+      if (sourcesHeader) {
+        try {
+          sourcesList = JSON.parse(decodeURIComponent(sourcesHeader))
+        } catch (e) {
+          console.error("Failed to parse sources header:", e)
+        }
+      }
+
       if (!resStream.body) throw new Error("No response body received")
 
       const reader = resStream.body.getReader()
@@ -264,7 +275,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           const chunk = decoder.decode(value, { stream: !done })
           streamContent += chunk
           setMessages(prev =>
-            prev.map(m => (m.id === assistantMsgId ? { ...m, content: streamContent } : m))
+            prev.map(m => (m.id === assistantMsgId ? { ...m, content: streamContent, sources: sourcesList } : m))
           )
         }
       }
@@ -295,6 +306,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           tokens: totalTokens,
           cost: costStr,
           latency: latencyMs,
+          sources: sourcesList,
         }),
       })
 

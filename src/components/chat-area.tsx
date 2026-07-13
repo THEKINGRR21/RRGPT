@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useRef, useEffect } from "react"
-import { ArrowUp, CornerDownLeft, Sparkles, Copy, Check } from "lucide-react"
+import { ArrowUp, CornerDownLeft, Sparkles, Copy, Check, BookOpen, FileText } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
@@ -167,7 +167,36 @@ export function ChatArea({
                       {m.role === "user" ? (
                         m.content
                       ) : (
-                        <MarkdownRenderer content={m.content} />
+                        <>
+                          <MarkdownRenderer content={m.content} />
+                          {m.sources && Array.isArray(m.sources) && m.sources.length > 0 && (
+                            <div className="mt-4 flex flex-wrap gap-2 animate-fade-in select-none">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 w-full mb-1">
+                                <BookOpen className="w-3.5 h-3.5 text-accent" /> Retrieved Sources:
+                              </span>
+                              {m.sources.map((src, idx) => {
+                                const item = src as { documentName: string; score: number; content: string }
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="group relative flex items-center gap-1.5 px-2.5 py-1 rounded bg-secondary hover:bg-secondary/70 border border-border/50 text-[10px] font-mono text-muted-foreground cursor-pointer"
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-accent" />
+                                    <span>{item.documentName}</span>
+                                    <span className="text-[8px] font-sans px-1 rounded bg-accent/15 text-accent border border-accent/25">
+                                      {typeof item.score === 'number' ? `${(item.score * 100).toFixed(0)}%` : 'match'}
+                                    </span>
+                                    
+                                    <div className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto absolute bottom-full left-0 mb-2 w-72 p-3 bg-card border border-border rounded-xl shadow-xl z-50 text-[11px] font-sans text-foreground/90 transition-all duration-150 transform translate-y-1 group-hover:translate-y-0 leading-relaxed max-h-40 overflow-y-auto">
+                                      <span className="font-bold text-accent block mb-1">Match Snippet:</span>
+                                      {"\""}{item.content}{"\""}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

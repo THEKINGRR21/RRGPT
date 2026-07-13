@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { 
   MessageSquare, 
   Search, 
@@ -11,7 +11,10 @@ import {
   PanelLeftClose, 
   Database,
   Check,
-  X
+  X,
+  BookOpen,
+  FileText,
+  Loader2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -57,6 +60,81 @@ export function Sidebar({
   const [searchQuery, setSearchQuery] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState("")
+
+  interface DocumentMeta {
+    id: string
+    name: string
+    mimeType: string
+    size: number
+    createdAt: string | Date
+  }
+
+  const [documentsList, setDocumentsList] = useState<DocumentMeta[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+
+  const loadDocuments = async () => {
+    try {
+      const res = await fetch("/api/documents")
+      if (res.ok) {
+        const data = await res.json()
+        setDocumentsList(data)
+      }
+    } catch (err) {
+      console.error("Failed to load documents:", err)
+    }
+  }
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (session?.user) {
+      loadDocuments()
+    } else {
+      setDocumentsList([])
+    }
+  }, [session])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    const formData = new FormData()
+    formData.append("file", file)
+
+    try {
+      const res = await fetch("/api/documents", {
+        method: "POST",
+        body: formData,
+      })
+      if (res.ok) {
+        await loadDocuments()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        alert(err.error || "Failed to ingest document.")
+      }
+    } catch (err) {
+      console.error("Upload error:", err)
+      alert("An error occurred during file upload.")
+    } finally {
+      setIsUploading(false)
+      e.target.value = ""
+    }
+  }
+
+  const handleDeleteDocument = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const res = await fetch(`/api/documents/${id}`, {
+        method: "DELETE",
+      })
+      if (res.ok) {
+        await loadDocuments()
+      }
+    } catch (err) {
+      console.error("Failed to delete document:", err)
+    }
+  }
 
   const filteredConversations = conversations.filter((c) =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -164,6 +242,57 @@ export function Sidebar({
               No conversations found
             </div>
           )}
+        </div>
+
+        {/* Knowledge Base Section */}
+        <div className="pt-4 border-t border-border/40">
+          <div className="px-2 pb-1.5 flex items-center justify-between">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 select-none">
+              <BookOpen className="w-3.5 h-3.5 text-accent shrink-0" />
+              <span>Knowledge Base</span>
+            </span>
+            <label className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer transition-colors" title="Upload document (.txt, .pdf)">
+              <Plus className="w-3.5 h-3.5" />
+              <input
+                type="file"
+                accept=".txt,.pdf"
+                className="hidden"
+                disabled={isUploading}
+                onChange={handleFileUpload}
+              />
+            </label>
+          </div>
+          
+          <div className="space-y-0.5 max-h-[180px] overflow-y-auto pr-1">
+            {isUploading && (
+              <div className="px-2.5 py-2 text-xs text-accent font-medium animate-pulse flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Ingesting...
+              </div>
+            )}
+            {documentsList.map((doc) => (
+              <div
+                key={doc.id}
+                className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors cursor-default relative"
+              >
+                <div className="flex items-center gap-2 overflow-hidden flex-1 select-none">
+                  <FileText className="w-3.5 h-3.5 shrink-0 text-muted-foreground/75" />
+                  <span className="truncate pr-4" title={doc.name}>{doc.name}</span>
+                </div>
+                <button
+                  onClick={(e) => handleDeleteDocument(doc.id, e)}
+                  className="p-1 text-muted-foreground hover:text-destructive rounded hover:bg-secondary/80 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                  title="Remove document"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            {!isUploading && documentsList.length === 0 && (
+              <div className="text-center py-4 text-[10px] text-muted-foreground italic select-none">
+                No documents uploaded. Click {"\""}+{"\""} to upload a .txt or .pdf.
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
