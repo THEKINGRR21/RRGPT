@@ -211,18 +211,37 @@ export async function POST(req: Request) {
 }
 
 /**
+ * Fetch wrapper with strict timeout support.
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 2000): Promise<Response> {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeout)
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    })
+    clearTimeout(id)
+    return response
+  } catch (error) {
+    clearTimeout(id)
+    throw error
+  }
+}
+
+/**
  * Unified server-side web search scraper with automatic Yahoo Search fallback.
  * Bypasses Vercel serverless IP blocking by falling back to Yahoo HTML results.
  */
 async function searchWebScraper(query: string): Promise<Array<{ title: string; url: string; snippet: string }>> {
-  // 1. Try DuckDuckGo first
+  // 1. Try DuckDuckGo first (timeout 2000ms)
   try {
     console.log(`Attempting DuckDuckGo search for: "${query}"`)
-    const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+    const res = await fetchWithTimeout(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       }
-    })
+    }, 2000)
     
     if (res.ok) {
       const html = await res.text()
@@ -276,17 +295,17 @@ async function searchWebScraper(query: string): Promise<Array<{ title: string; u
     }
     console.warn("DuckDuckGo search returned no results or failed, falling back to Yahoo Search...")
   } catch (ddgError) {
-    console.warn("DuckDuckGo search failed, falling back to Yahoo Search:", ddgError)
+    console.warn("DuckDuckGo search failed or timed out, falling back to Yahoo Search:", ddgError)
   }
   
-  // 2. Fall back to Yahoo Search
+  // 2. Fall back to Yahoo Search (timeout 2000ms)
   try {
     console.log(`Attempting Yahoo Search fallback for: "${query}"`)
-    const res = await fetch(`https://search.yahoo.com/search?p=${encodeURIComponent(query)}`, {
+    const res = await fetchWithTimeout(`https://search.yahoo.com/search?p=${encodeURIComponent(query)}`, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       }
-    })
+    }, 2000)
     
     if (!res.ok) throw new Error(`Yahoo Search HTTP error: ${res.status}`)
     const html = await res.text()
@@ -324,7 +343,7 @@ async function searchWebScraper(query: string): Promise<Array<{ title: string; u
     console.log(`Yahoo Search succeeded, found ${results.length} results.`)
     return results
   } catch (yahooError) {
-    console.error("Yahoo Search fallback failed:", yahooError)
+    console.error("Yahoo Search fallback failed or timed out:", yahooError)
     return []
   }
 }
