@@ -31,18 +31,33 @@ console.log("Database Host:", targetUrl.split('@')[1]?.split('/')[0] || "Remote 
     const migrationPath = path.join(__dirname, '../drizzle/0000_purple_nomad.sql');
     const sqlContent = fs.readFileSync(migrationPath, 'utf8');
     
-    console.log("2. Applying database tables & pgvector constraints...");
-    await sql.unsafe(sqlContent);
+    console.log("2. Splitting SQL migration into individual statements...");
+    // Split by semicolon, filter empty lines, and ignore standalone comments
+    const statements = sqlContent
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && !s.startsWith('-->'));
+
+    console.log(`Found ${statements.length} SQL statements to execute.`);
+
+    console.log("\n3. Executing statements sequentially...");
+    for (let i = 0; i < statements.length; i++) {
+      const stmt = statements[i];
+      try {
+        await sql.unsafe(stmt);
+      } catch (err) {
+        console.error(`\n❌ Error executing SQL statement ${i + 1}:`);
+        console.error(`Query: ${stmt}`);
+        throw err;
+      }
+    }
     
     console.log("\n=========================================");
     console.log("✅ Migrations completed successfully!");
     console.log("=========================================");
   } catch (error) {
     console.error("\n❌ Migration failed:");
-    console.error(error.message);
-    if (error.detail) {
-      console.error("Details:", error.detail);
-    }
+    console.error(error.stack || error.message || error);
   } finally {
     await sql.end();
   }
