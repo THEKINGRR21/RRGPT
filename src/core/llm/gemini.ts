@@ -6,7 +6,7 @@ import { LLMProvider } from "./provider"
 const encoding = getEncoding("cl100k_base")
 
 // Dynamic API Key resolver for Vercel and local environments
-const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || ""
+const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.RRGPT_KEY || ""
 const googleInstance = createGoogleGenerativeAI({
   apiKey
 })

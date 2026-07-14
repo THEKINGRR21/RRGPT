@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const { messages, model, provider: providerId } = await req.json()
 
     // Server-side environment diagnostics (safely logs key existence and mask)
-    const geminiKey = process.env.GEMINI_API_KEY || ""
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.RRGPT_KEY || ""
     const keyMask = geminiKey 
       ? `${geminiKey.substring(0, 6)}...${geminiKey.substring(geminiKey.length - 4)}` 
       : "missing"
