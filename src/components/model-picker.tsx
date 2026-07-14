@@ -19,20 +19,20 @@ export interface ModelOption {
 
 export const MODELS: ModelOption[] = [
   {
-    id: "gemini-2.5-flash",
-    name: "Gemini 2.5 Flash",
+    id: "gemini-flash-latest",
+    name: "Gemini Flash (Latest)",
     provider: "google",
     providerLabel: "Google",
     latency: "~120ms",
     inputCost: "$0.075",
     outputCost: "$0.30",
     contextWindow: "2M",
-    description: "Fastest response, ideal for code generation and quick responses.",
+    description: "Fastest response, ideal for code generation and daily tasks.",
     badge: "Speed Optimized",
   },
   {
-    id: "gemini-2.5-pro",
-    name: "Gemini 2.5 Pro",
+    id: "gemini-pro-latest",
+    name: "Gemini Pro (Latest)",
     provider: "google",
     providerLabel: "Google",
     latency: "~350ms",

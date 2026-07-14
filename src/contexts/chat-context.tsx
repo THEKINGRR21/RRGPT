@@ -50,8 +50,8 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined)
 // Telemetry and pricing configurations matching model-picker.tsx
 export const PRICING_SHEET: Record<string, Record<string, { input: number; output: number }>> = {
   google: {
-    "gemini-2.5-flash": { input: 0.075, output: 0.30 },
-    "gemini-2.5-pro": { input: 1.25, output: 5.00 },
+    "gemini-flash-latest": { input: 0.075, output: 0.30 },
+    "gemini-pro-latest": { input: 1.25, output: 5.00 },
     "gemini-2.0-flash-exp": { input: 0.00, output: 0.00 },
   },
   openai: {
@@ -70,7 +70,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [selectedProvider, setSelectedProvider] = useState<string>("google")
-  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash")
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-flash-latest")
   const [isStreaming, setIsStreaming] = useState<boolean>(false)
   const [input, setInput] = useState<string>("")
 

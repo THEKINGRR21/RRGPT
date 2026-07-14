@@ -15,11 +15,11 @@ export class GeminiProvider implements LLMProvider {
   id = "google"
   name = "Google Gemini"
 
-  getModel(modelId = "gemini-2.5-flash") {
-    // If the UI requests gemini-1.5-flash or pro, we map them directly to 2.5
+  getModel(modelId = "gemini-flash-latest") {
+    // Dynamically map legacy/preview models to production stable rolling aliases
     let activeModelId = modelId
-    if (modelId.includes("1.5-flash")) activeModelId = "gemini-2.5-flash"
-    if (modelId.includes("1.5-pro")) activeModelId = "gemini-2.5-pro"
+    if (modelId.includes("flash")) activeModelId = "gemini-flash-latest"
+    if (modelId.includes("pro")) activeModelId = "gemini-pro-latest"
     
     return googleInstance(activeModelId)
   }
@@ -45,7 +45,7 @@ export class GeminiProvider implements LLMProvider {
     return tokens + 2 // response formatting overhead
   }
 
-  calculateCost(tokensIn: number, tokensOut: number, modelId = "gemini-2.5-flash") {
+  calculateCost(tokensIn: number, tokensOut: number, modelId = "gemini-flash-latest") {
     let inputRate = 0.075 / 1_000_000 // $0.075 per 1M tokens
     let outputRate = 0.30 / 1_000_000 // $0.30 per 1M tokens
 

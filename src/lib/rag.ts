@@ -154,10 +154,11 @@ export async function retrieveRelevantContext(
   try {
     const provider = getProvider(providerId)
     const queryEmbedding = await provider.embedText(query)
+    const vectorString = `[${queryEmbedding.join(",")}]`
     
     // 1. Cosine similarity query using pgvector distance operator
     // Drizzle custom sql template injection for cosine distance
-    const similarity = sql<number>`1 - (embedding <=> ${queryEmbedding}::vector)`
+    const similarity = sql<number>`1 - (embedding <=> ${vectorString}::vector)`
     
     // We filter document chunks by current provider space
     const chunks = await db
