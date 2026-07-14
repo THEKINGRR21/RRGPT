@@ -233,42 +233,48 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout 
  * Unified server-side web search scraper with automatic Yahoo Search fallback.
  * Bypasses Vercel serverless IP blocking by falling back to Yahoo HTML results.
  */
-interface GoogleSearchItem {
+interface SerperResultItem {
   title: string
   link: string
   snippet?: string
 }
 
 async function searchWebScraper(query: string): Promise<Array<{ title: string; url: string; snippet: string }>> {
-  // 1. Try official Google Custom Search JSON API if configured
-  const googleKey = process.env.GOOGLE_SEARCH_API_KEY
-  const googleCx = process.env.GOOGLE_SEARCH_CX
+  // 1. Try official Serper.dev Google Search API if configured
+  const serperKey = process.env.SERPER_API_KEY
   
-  if (googleKey && googleCx) {
+  if (serperKey) {
     try {
-      console.log(`Attempting official Google Custom Search for: "${query}"`)
+      console.log(`Attempting Serper.dev Google Search for: "${query}"`)
       const res = await fetchWithTimeout(
-        `https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCx}&q=${encodeURIComponent(query)}`,
-        {},
+        "https://google.serper.dev/search",
+        {
+          method: "POST",
+          headers: {
+            "X-API-KEY": serperKey,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ q: query, num: 5 })
+        },
         3000
       )
       if (res.ok) {
         const data = await res.json()
-        const items = data.items || []
-        const results = items.map((item: GoogleSearchItem) => ({
+        const items = data.organic || []
+        const results = items.map((item: SerperResultItem) => ({
           title: item.title,
           url: item.link,
           snippet: item.snippet || ""
         })).slice(0, 5)
         
         if (results.length > 0) {
-          console.log(`Google Custom Search succeeded, found ${results.length} results.`)
+          console.log(`Serper Google Search succeeded, found ${results.length} results.`)
           return results
         }
       }
-      console.warn("Google Custom Search returned no results or failed, falling back to DuckDuckGo...")
-    } catch (googleError) {
-      console.warn("Google Custom Search failed or timed out, falling back to DuckDuckGo:", googleError)
+      console.warn("Serper Google Search returned no results or failed, falling back to DuckDuckGo...")
+    } catch (serperError) {
+      console.warn("Serper Google Search failed or timed out, falling back to DuckDuckGo:", serperError)
     }
   }
 
