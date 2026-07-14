@@ -5,7 +5,7 @@ import { eq, sql } from "drizzle-orm"
 
 export async function GET() {
   try {
-    const session = await auth()
+    await auth()
 
     // Total conversations count
     const [convCount] = await db

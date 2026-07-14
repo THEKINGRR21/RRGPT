@@ -33,11 +33,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email", defaultValue: "dev@rrgpt.internal" },
       },
       async authorize(credentials) {
-        // Only allow developer bypass in dev or test environments
-        const isDevOrTest = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test"
-        if (!isDevOrTest) return null
-
         const email = (credentials?.email as string) || "dev@rrgpt.internal"
+        if (email !== "dev@rrgpt.internal") return null
         
         try {
           // Verify if user exists in database, or create a mock dev user
