@@ -120,10 +120,9 @@ export async function POST(req: Request) {
       system: systemPrompt,
     })
 
-    // 6. Return text stream with sources metadata in header
-    return new Response(result.textStream, {
+    // 6. Return text stream with sources metadata in header using Vercel AI SDK response helper
+    return result.toTextStreamResponse({
       headers: {
-        "Content-Type": "text/plain; charset=utf-8",
         "X-Sources": encodeURIComponent(JSON.stringify(sources)),
       }
     })
