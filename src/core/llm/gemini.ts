@@ -1,16 +1,22 @@
-import { google } from "@ai-sdk/google"
+import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { embed, ModelMessage } from "ai"
 import { getEncoding } from "js-tiktoken"
 import { LLMProvider } from "./provider"
 
 const encoding = getEncoding("cl100k_base")
 
+// Dynamic API Key resolver for Vercel and local environments
+const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || ""
+const googleInstance = createGoogleGenerativeAI({
+  apiKey
+})
+
 export class GeminiProvider implements LLMProvider {
   id = "google"
   name = "Google Gemini"
 
   getModel(modelId = "gemini-1.5-flash") {
-    return google(modelId)
+    return googleInstance(modelId)
   }
 
   async countTokens(content: string | ModelMessage[]): Promise<number> {
@@ -55,7 +61,7 @@ export class GeminiProvider implements LLMProvider {
 
   async embedText(text: string): Promise<number[]> {
     const { embedding } = await embed({
-      model: google.textEmbeddingModel("text-embedding-004"),
+      model: googleInstance.textEmbeddingModel("text-embedding-004"),
       value: text,
     })
     return embedding

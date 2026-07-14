@@ -60,10 +60,14 @@ export async function POST(req: Request) {
     let contextText = ""
 
     if (queryText.trim()) {
-      sources = await retrieveRelevantContext(queryText, providerId)
-      contextText = sources
-        .map(c => `[Source: ${c.documentName}]\n${c.content}`)
-        .join("\n\n")
+      try {
+        sources = await retrieveRelevantContext(queryText, providerId)
+        contextText = sources
+          .map(c => `[Source: ${c.documentName}]\n${c.content}`)
+          .join("\n\n")
+      } catch (ragError) {
+        console.error("RAG context retrieval failed gracefully:", ragError)
+      }
     }
 
     // 3. Memory: Rolling Summary Consolidation
