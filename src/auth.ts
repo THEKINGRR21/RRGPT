@@ -1,4 +1,4 @@
-import NextAuth from "next-auth"
+import NextAuth, { AuthOptions, getServerSession } from "next-auth"
 import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
 import Email from "next-auth/providers/email"
@@ -7,9 +7,10 @@ import { db } from "@/db"
 import { users } from "@/db/schema"
 import { eq } from "drizzle-orm"
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db),
-  session: { strategy: "jwt" }, // JWT strategy is required to support the Credentials provider
+export const authOptions: AuthOptions = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adapter: DrizzleAdapter(db) as any,
+  session: { strategy: "jwt" },
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -77,16 +78,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
-        token.role = user.role || "user"
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.role = (user as any).role || "user"
       }
       return token
     },
     async session({ session, token }) {
       if (session.user && token) {
-        session.user.id = token.id as string
-        session.user.role = (token.role as "user" | "admin" | "dev") || "user"
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session.user as any).id = token.id as string
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session.user as any).role = (token.role as "user" | "admin" | "dev") || "user"
       }
       return session
     },
   },
-})
+}
+
+/**
+ * Custom session checker for API routes and Server Components
+ */
+export const auth = () => getServerSession(authOptions)
+export default NextAuth(authOptions)
