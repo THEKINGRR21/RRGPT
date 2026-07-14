@@ -1,9 +1,10 @@
-import { streamText, generateText } from "ai"
+import { streamText, generateText, tool, zodSchema, isStepCount } from "ai"
 import { getProvider } from "@/core/llm"
 import { SYSTEM_PROMPT } from "@/core/prompts/system"
 import { retrieveRelevantContext } from "@/lib/rag"
 import { scanPromptInjection } from "@/lib/safety"
 import { rateLimit } from "@/lib/rate-limit"
+import { z } from "zod"
 
 export async function POST(req: Request) {
   try {
@@ -87,6 +88,7 @@ export async function POST(req: Request) {
 
     // 3. Memory: Rolling Summary Consolidation
     let chatMessages = messages
+
     if (messages.length > 8) {
       console.log("Memory consolidation triggered: Summarizing older context...")
       
@@ -128,11 +130,46 @@ export async function POST(req: Request) {
       systemPrompt += `\n\nRetrieved Knowledge Base Context:\n${contextText}\n\nStrictly answer the query using the retrieved context above. Cite your sources inline using [Source: Document Name] notation (e.g. "[Source: my-doc.pdf]").`
     }
 
-    // 5. Invoke Vercel AI SDK text streaming
+    // 5. Invoke Vercel AI SDK text streaming with server-side tools
     const result = await streamText({
       model: languageModel,
       messages: chatMessages,
       system: systemPrompt,
+      stopWhen: isStepCount(5),
+      tools: {
+        getCurrentTime: tool({
+          description: "Get the current date and time in a specific timezone.",
+          inputSchema: zodSchema(z.object({
+            timezone: z.string().describe("The timezone name, e.g. 'Asia/Kolkata', 'America/New_York', 'UTC'").default("Asia/Kolkata"),
+          })),
+          execute: async ({ timezone }: { timezone: string }) => {
+            const now = new Date()
+            const timeStr = now.toLocaleString("en-US", { timeZone: timezone })
+            return {
+              timezone,
+              dateTime: timeStr,
+              message: `The current date and time in ${timezone} is ${timeStr}.`
+            }
+          }
+        }),
+        calculateExpression: tool({
+          description: "Evaluate a simple mathematical expression containing only digits, arithmetic operators (+, -, *, /), parentheses, and spaces.",
+          inputSchema: zodSchema(z.object({
+            expression: z.string().describe("The math expression to evaluate, e.g. '3 * (4 + 2) / 1.5'"),
+          })),
+          execute: async ({ expression }: { expression: string }) => {
+            try {
+              if (!/^[0-9+\-*/().\s]+$/.test(expression)) {
+                return { error: "Security validation failed: Expression contains invalid characters." }
+              }
+              const res = eval(expression)
+              return { expression, result: res }
+            } catch {
+              return { error: "Failed to evaluate mathematical expression." }
+            }
+          }
+        })
+      }
     })
 
     // 6. Return text stream with sources metadata in header using Vercel AI SDK response helper
