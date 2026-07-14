@@ -66,7 +66,7 @@ export class GeminiProvider implements LLMProvider {
 
   async embedText(text: string): Promise<number[]> {
     const { embedding } = await embed({
-      model: googleInstance.textEmbeddingModel("gemini-embedding-2"),
+      model: googleInstance.textEmbeddingModel("gemini-embedding-001"),
       value: text,
     })
     return embedding
