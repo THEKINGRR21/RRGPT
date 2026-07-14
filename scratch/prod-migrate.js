@@ -5,7 +5,9 @@
  *   node scratch/prod-migrate.js "<production-database-url>"
  */
 
-const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const postgres = require('postgres');
 
 const targetUrl = process.argv[2];
 
@@ -20,25 +22,28 @@ console.log("   Running Production Database Migrations");
 console.log("=========================================");
 console.log("Database Host:", targetUrl.split('@')[1]?.split('/')[0] || "Remote Host");
 
-try {
-  console.log("\n1. Generating migration SQL files...");
-  execSync("npx drizzle-kit generate", { stdio: 'inherit' });
+(async () => {
+  // Initialize connection with SSL required
+  const sql = postgres(targetUrl, { ssl: 'require' });
   
-  console.log("\n2. Applying migration structures to production host...");
-  // Inject the database URL into the drizzle-kit runtime env
-  execSync("npx drizzle-kit migrate", {
-    env: {
-      ...process.env,
-      DATABASE_URL: targetUrl
-    },
-    stdio: 'inherit'
-  });
-  
-  console.log("\n=========================================");
-  console.log("✅ Migrations completed successfully!");
-  console.log("=========================================");
-} catch (error) {
-  console.error("\n❌ Migration failed:");
-  console.error(error.message);
-  process.exit(1);
-}
+  try {
+    console.log("\n1. Reading migration SQL file...");
+    const migrationPath = path.join(__dirname, '../drizzle/0000_purple_nomad.sql');
+    const sqlContent = fs.readFileSync(migrationPath, 'utf8');
+    
+    console.log("2. Applying database tables & pgvector constraints...");
+    await sql.unsafe(sqlContent);
+    
+    console.log("\n=========================================");
+    console.log("✅ Migrations completed successfully!");
+    console.log("=========================================");
+  } catch (error) {
+    console.error("\n❌ Migration failed:");
+    console.error(error.message);
+    if (error.detail) {
+      console.error("Details:", error.detail);
+    }
+  } finally {
+    await sql.end();
+  }
+})();
