@@ -168,6 +168,23 @@ export async function POST(req: Request) {
               return { error: "Failed to evaluate mathematical expression." }
             }
           }
+        }),
+        searchWeb: tool({
+          description: "Search the web for real-time information, news, current events, sports scores, or stock prices.",
+          inputSchema: zodSchema(z.object({
+            query: z.string().describe("The search query to execute, e.g. 'AAPL stock price today' or 'current status of NASA mission'"),
+          })),
+          execute: async ({ query }: { query: string }) => {
+            console.log(`Executing web search tool for query: "${query}"`)
+            const results = await searchDuckDuckGo(query)
+            return {
+              query,
+              results,
+              message: results.length > 0 
+                ? `Found ${results.length} search results.` 
+                : "No search results found."
+            }
+          }
         })
       }
     })
@@ -190,5 +207,68 @@ export async function POST(req: Request) {
         headers: { "Content-Type": "application/json" },
       }
     )
+  }
+}
+
+/**
+ * Free server-side DuckDuckGo scraper helper with zero external API key requirements.
+ */
+async function searchDuckDuckGo(query: string): Promise<Array<{ title: string; url: string; snippet: string }>> {
+  try {
+    const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }
+    })
+    
+    if (!res.ok) throw new Error("Search request failed")
+    const html = await res.text()
+    
+    const titleRegex = /<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g
+    const snippetRegex = /<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g
+    
+    const resultsMap = new Map<string, { title: string; url: string; snippet: string }>()
+    
+    const cleanText = (text: string) => {
+      return text
+        .replace(/<[^>]*>/g, "")
+        .replace(/&amp;/g, "&")
+        .replace(/&quot;/g, '"')
+        .replace(/&#x27;/g, "'")
+        .trim()
+    }
+    
+    const decodeDDGUrl = (link: string) => {
+      if (link.includes("uddg=")) {
+        const urlParam = link.split("uddg=")[1]?.split("&")[0]
+        if (urlParam) return decodeURIComponent(urlParam)
+      }
+      if (link.startsWith("//")) {
+        return "https:" + link
+      }
+      return link
+    }
+    
+    let match
+    while ((match = titleRegex.exec(html)) !== null) {
+      const rawUrl = match[1]
+      const url = decodeDDGUrl(rawUrl)
+      const title = cleanText(match[2])
+      resultsMap.set(rawUrl, { title, url, snippet: "" })
+    }
+    
+    while ((match = snippetRegex.exec(html)) !== null) {
+      const rawUrl = match[1]
+      const snippet = cleanText(match[2])
+      if (resultsMap.has(rawUrl)) {
+        const item = resultsMap.get(rawUrl)
+        if (item) item.snippet = snippet
+      }
+    }
+    
+    return Array.from(resultsMap.values()).slice(0, 5)
+  } catch (e) {
+    console.error("DuckDuckGo search error:", e)
+    return []
   }
 }
