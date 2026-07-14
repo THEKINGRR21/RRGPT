@@ -176,7 +176,7 @@ export async function POST(req: Request) {
           })),
           execute: async ({ query }: { query: string }) => {
             console.log(`Executing web search tool for query: "${query}"`)
-            const results = await searchDuckDuckGo(query)
+            const results = await searchWebScraper(query)
             return {
               query,
               results,
@@ -211,23 +211,88 @@ export async function POST(req: Request) {
 }
 
 /**
- * Free server-side DuckDuckGo scraper helper with zero external API key requirements.
+ * Unified server-side web search scraper with automatic Yahoo Search fallback.
+ * Bypasses Vercel serverless IP blocking by falling back to Yahoo HTML results.
  */
-async function searchDuckDuckGo(query: string): Promise<Array<{ title: string; url: string; snippet: string }>> {
+async function searchWebScraper(query: string): Promise<Array<{ title: string; url: string; snippet: string }>> {
+  // 1. Try DuckDuckGo first
   try {
+    console.log(`Attempting DuckDuckGo search for: "${query}"`)
     const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       }
     })
     
-    if (!res.ok) throw new Error("Search request failed")
+    if (res.ok) {
+      const html = await res.text()
+      const titleRegex = /<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g
+      const snippetRegex = /<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g
+      
+      const resultsMap = new Map<string, { title: string; url: string; snippet: string }>()
+      
+      const cleanText = (text: string) => {
+        return text
+          .replace(/<[^>]*>/g, "")
+          .replace(/&amp;/g, "&")
+          .replace(/&quot;/g, '"')
+          .replace(/&#x27;/g, "'")
+          .trim()
+      }
+      
+      const decodeDDGUrl = (link: string) => {
+        if (link.includes("uddg=")) {
+          const urlParam = link.split("uddg=")[1]?.split("&")[0]
+          if (urlParam) return decodeURIComponent(urlParam)
+        }
+        if (link.startsWith("//")) {
+          return "https:" + link
+        }
+        return link
+      }
+      
+      let match
+      while ((match = titleRegex.exec(html)) !== null) {
+        const rawUrl = match[1]
+        const url = decodeDDGUrl(rawUrl)
+        const title = cleanText(match[2])
+        resultsMap.set(rawUrl, { title, url, snippet: "" })
+      }
+      
+      while ((match = snippetRegex.exec(html)) !== null) {
+        const rawUrl = match[1]
+        const snippet = cleanText(match[2])
+        if (resultsMap.has(rawUrl)) {
+          const item = resultsMap.get(rawUrl)
+          if (item) item.snippet = snippet
+        }
+      }
+      
+      const results = Array.from(resultsMap.values()).slice(0, 5)
+      if (results.length > 0) {
+        console.log(`DuckDuckGo search succeeded, found ${results.length} results.`)
+        return results
+      }
+    }
+    console.warn("DuckDuckGo search returned no results or failed, falling back to Yahoo Search...")
+  } catch (ddgError) {
+    console.warn("DuckDuckGo search failed, falling back to Yahoo Search:", ddgError)
+  }
+  
+  // 2. Fall back to Yahoo Search
+  try {
+    console.log(`Attempting Yahoo Search fallback for: "${query}"`)
+    const res = await fetch(`https://search.yahoo.com/search?p=${encodeURIComponent(query)}`, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }
+    })
+    
+    if (!res.ok) throw new Error(`Yahoo Search HTTP error: ${res.status}`)
     const html = await res.text()
     
-    const titleRegex = /<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g
-    const snippetRegex = /<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g
-    
-    const resultsMap = new Map<string, { title: string; url: string; snippet: string }>()
+    const results: Array<{ title: string; url: string; snippet: string }> = []
+    const blocks = html.split(/<div[^>]*class="[^"]*dd [^"]*algo[^"]*"/)
     
     const cleanText = (text: string) => {
       return text
@@ -235,40 +300,31 @@ async function searchDuckDuckGo(query: string): Promise<Array<{ title: string; u
         .replace(/&amp;/g, "&")
         .replace(/&quot;/g, '"')
         .replace(/&#x27;/g, "'")
+        .replace(/&hellip;/g, "...")
         .trim()
     }
     
-    const decodeDDGUrl = (link: string) => {
-      if (link.includes("uddg=")) {
-        const urlParam = link.split("uddg=")[1]?.split("&")[0]
-        if (urlParam) return decodeURIComponent(urlParam)
-      }
-      if (link.startsWith("//")) {
-        return "https:" + link
-      }
-      return link
-    }
-    
-    let match
-    while ((match = titleRegex.exec(html)) !== null) {
-      const rawUrl = match[1]
-      const url = decodeDDGUrl(rawUrl)
-      const title = cleanText(match[2])
-      resultsMap.set(rawUrl, { title, url, snippet: "" })
-    }
-    
-    while ((match = snippetRegex.exec(html)) !== null) {
-      const rawUrl = match[1]
-      const snippet = cleanText(match[2])
-      if (resultsMap.has(rawUrl)) {
-        const item = resultsMap.get(rawUrl)
-        if (item) item.snippet = snippet
+    for (let i = 1; i < blocks.length && results.length < 5; i++) {
+      const block = blocks[i]
+      const linkMatch = /<a[^>]*href="([^"]+)"[^>]*>/.exec(block)
+      const titleMatch = /<h3[^>]*>([\s\S]*?)<\/h3>/.exec(block)
+      const snippetMatch = /<p[^>]*>([\s\S]*?)<\/p>/.exec(block) || /<div[^>]*class="[^"]*compText[^"]*"[^>]*>([\s\S]*?)<\/div>/.exec(block)
+      
+      if (linkMatch && titleMatch) {
+        const url = linkMatch[1]
+        const title = cleanText(titleMatch[1])
+        const snippet = snippetMatch ? cleanText(snippetMatch[1]) : ""
+        
+        if (url && title && !url.includes("yahoo.com") && !url.includes("yimg.com")) {
+          results.push({ title, url, snippet })
+        }
       }
     }
     
-    return Array.from(resultsMap.values()).slice(0, 5)
-  } catch (e) {
-    console.error("DuckDuckGo search error:", e)
+    console.log(`Yahoo Search succeeded, found ${results.length} results.`)
+    return results
+  } catch (yahooError) {
+    console.error("Yahoo Search fallback failed:", yahooError)
     return []
   }
 }
