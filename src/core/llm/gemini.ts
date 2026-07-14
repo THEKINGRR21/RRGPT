@@ -15,8 +15,13 @@ export class GeminiProvider implements LLMProvider {
   id = "google"
   name = "Google Gemini"
 
-  getModel(modelId = "gemini-1.5-flash") {
-    return googleInstance(modelId)
+  getModel(modelId = "gemini-2.5-flash") {
+    // If the UI requests gemini-1.5-flash or pro, we map them directly to 2.5
+    let activeModelId = modelId
+    if (modelId.includes("1.5-flash")) activeModelId = "gemini-2.5-flash"
+    if (modelId.includes("1.5-pro")) activeModelId = "gemini-2.5-pro"
+    
+    return googleInstance(activeModelId)
   }
 
   async countTokens(content: string | ModelMessage[]): Promise<number> {
@@ -40,7 +45,7 @@ export class GeminiProvider implements LLMProvider {
     return tokens + 2 // response formatting overhead
   }
 
-  calculateCost(tokensIn: number, tokensOut: number, modelId = "gemini-1.5-flash") {
+  calculateCost(tokensIn: number, tokensOut: number, modelId = "gemini-2.5-flash") {
     let inputRate = 0.075 / 1_000_000 // $0.075 per 1M tokens
     let outputRate = 0.30 / 1_000_000 // $0.30 per 1M tokens
 
@@ -61,7 +66,7 @@ export class GeminiProvider implements LLMProvider {
 
   async embedText(text: string): Promise<number[]> {
     const { embedding } = await embed({
-      model: googleInstance.textEmbeddingModel("text-embedding-004"),
+      model: googleInstance.textEmbeddingModel("gemini-embedding-2"),
       value: text,
     })
     return embedding
