@@ -26,6 +26,15 @@ export async function POST(req: Request) {
 
     const { messages, model, provider: providerId } = await req.json()
 
+    // Server-side environment diagnostics (safely logs key existence)
+    console.log("LLM Gateway configuration scan:", {
+      hasGeminiKey: !!process.env.GEMINI_API_KEY,
+      hasGoogleKey: !!process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+      nodeEnv: process.env.NODE_ENV,
+      model,
+      providerId
+    })
+
     if (!messages || !Array.isArray(messages)) {
       return new Response(
         JSON.stringify({ error: "Malformed request: messages array is required." }), 
