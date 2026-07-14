@@ -1,4 +1,10 @@
-import * as pdf from "pdf-parse"
+// Mock DOMMatrix global to prevent pdf-parse from crashing in serverless environments
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (typeof global !== "undefined" && typeof (global as any).DOMMatrix === "undefined") {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(global as any).DOMMatrix = class {} as any
+}
+
 import { db } from "@/db"
 import { documents, documentChunks } from "@/db/schema"
 import { getProvider } from "@/core/llm"
@@ -8,8 +14,10 @@ import { sql, desc } from "drizzle-orm"
  * Parses a PDF buffer and extracts all raw text content.
  */
 export async function parsePdf(buffer: Buffer): Promise<string> {
+  // Lazy-load pdf-parse to isolate its environment dependencies in serverless functions
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = await (pdf as any)(buffer)
+  const pdfModule = (await import("pdf-parse")) as any
+  const data = await (pdfModule.default || pdfModule)(buffer)
   return data.text || ""
 }
 
