@@ -26,9 +26,15 @@ export async function POST(req: Request) {
 
     const { messages, model, provider: providerId } = await req.json()
 
-    // Server-side environment diagnostics (safely logs key existence)
+    // Server-side environment diagnostics (safely logs key existence and mask)
+    const geminiKey = process.env.GEMINI_API_KEY || ""
+    const keyMask = geminiKey 
+      ? `${geminiKey.substring(0, 6)}...${geminiKey.substring(geminiKey.length - 4)}` 
+      : "missing"
+
     console.log("LLM Gateway configuration scan:", {
-      hasGeminiKey: !!process.env.GEMINI_API_KEY,
+      hasGeminiKey: !!geminiKey,
+      geminiKeyMask: keyMask,
       hasGoogleKey: !!process.env.GOOGLE_GENERATIVE_AI_API_KEY,
       nodeEnv: process.env.NODE_ENV,
       model,
