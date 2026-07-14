@@ -68,6 +68,11 @@ export class GeminiProvider implements LLMProvider {
     const { embedding } = await embed({
       model: googleInstance.textEmbeddingModel("gemini-embedding-001"),
       value: text,
+      providerOptions: {
+        google: {
+          outputDimensionality: 768,
+        },
+      },
     })
     return embedding
   }
